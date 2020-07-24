@@ -109,7 +109,7 @@ def tweet(api, game_name, steam_link, rank):
         steam_link ([string]): [Link to the steam page]
         rank ([string]): [Link to the game on the ranking list]
     """
-    message = f"💎HIDDEN GEM OF THE DAY!💎\n\n🔥{game_name.a.text}🔥\n\nFind it here: {steam_link}\nFind more hidden gems: {rank}\n\n#gaming #hiddengems #steam #indiegame #steam250"
+    message = f"💎HIDDEN GEM OF THE DAY!💎\n\n🔥{game_name.a.text}🔥\n\nFind it here: {steam_link}\nFind more hidden gems: {rank}\n\n#gaming #games #steam #indiegame #indiegames"
     api.update_status(message)
 
 
