@@ -1,4 +1,3 @@
-import Gems
 import os
 import tweepy
 
@@ -14,7 +13,7 @@ class Follow4Follow:
             self.tweets = self.api.search(
                 "#indiegame -filter:retweets",
                 result_type="recent",
-                count=10,
+                count=20,
                 since_id=f"{self.id_num}",
             )
 
@@ -24,7 +23,7 @@ class Follow4Follow:
     def get_users(self):
         self.user_list = set()
 
-        with open("follower_list", "r+") as file:
+        with open("follower_list.txt", "r+") as file:
             for tweet in self.tweets:
                 file.seek(0)
                 content = file.read()
@@ -38,8 +37,20 @@ class Follow4Follow:
             self.api.create_friendship(acc)
 
 
+def authorize_twitter():
+    api_key = os.environ.get("twitter_api_key")
+    api_secret = os.environ.get("twitter_api_key_secret")
+    access_token = os.environ.get("twitter_access_token")
+    access_secret = os.environ.get("twitter_access_token_secret")
+
+    auth = tweepy.OAuthHandler(api_key, api_secret)
+    auth.set_access_token(access_token, access_secret)
+
+    return tweepy.API(auth)
+
+
 def main():
-    api = Gems.authorize_twitter()
+    api = authorize_twitter()
 
     twitter_bot = Follow4Follow(api)
 
