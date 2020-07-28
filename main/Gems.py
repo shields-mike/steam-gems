@@ -1,121 +1,73 @@
-import requests, bs4, datetime, pickle, random, os, tweepy, shutil
+import requests
+import bs4
+import datetime
+import pickle
+import random
+import os
+import tweepy
+import shutil
 
 
-def game(game_block):
-    """[This function takes in a BS4 Tag
-        and finds a specific string within it]
-    Args:
-        game_block ([Beautiful Soup Tag]): [An object that corresponds to html
-        tag in the document]
+class Website:
+    def __init__(self, game_block):
+        self.game_block = game_block
 
-    Returns:
-        [string]: [Returns the title of the game]
-    """
-    return game_block.find("span", class_="title")
+    def game(self):
+        self.game_name = self.game_block.find("span", class_="title")
 
+    def link(self):
+        link_block = self.game_block.find("span", class_="title")
+        self.link_250 = link_block.find("a")["href"]
 
-def link(game_block):
-    """[This function takes in a BS4 Tag
-        and finds a specific string within it]
-    Args:
-        game_block ([Beautiful Soup Tag]): [An object that corresponds to html
-        tag in the document]
+    def steam(self):
+        self.steam_link = self.game_block.find("a", class_="store")["href"]
 
-    Returns:
-        [string]: [Returns the steam 250 link of the game]
-    """
-    link_block = game_block.find("span", class_="title")
-    return link_block.find("a")["href"]
+    def ranking(self):
+        game_num = self.link_250.split("/")[4].strip()
+        self.rank = f"https://steam250.com/hidden_gems#app/{game_num}"
 
 
-def steam(game_block):
-    """[This function takes in a BS4 Tag
-        and finds a specific string within it]
-    Args:
-        game_block ([Beautiful Soup Tag]): [An object that corresponds to html
-        tag in the document]
+class File(Website):
+    def __init__(self, game_block, txt_file):
+        super().__init__(game_block)
+        self.txt_file = txt_file
 
-    Returns:
-        [string]: [Returns the steam link of the game]
-    """
-    return game_block.find("a", class_="store")["href"]
+    def check_for_dup(self):
+        with open(self.txt_file, "r", encoding="utf-8") as file:
+            if self.game_name.a.text not in file.read():
+                return False
+            else:
+                return True
 
-
-def check_for_dup(game_name, txt_file):
-    """[Checks whether or not the game is a duplicate]
-
-    Args:
-        game_name ([string]): [Title of the game]
-        txt_file ([string]): [Path to where the file is stored]
-
-    Returns:
-        [boolean]: [Returns whether or not the game is a duplicate]
-    """
-    with open(txt_file, "r", encoding="utf-8") as file:
-        if game_name.a.text not in file.read():
-            return False
-        else:
-            return True
+    def log_game(self):
+        with open(self.txt_file, "a", encoding="utf-8") as file:
+            file.write(self.game_name.a.text + "\n")
 
 
-def log_game(game_name, txt_file):
-    """[Writes the name of the game to the text file]
+class Tweeter(Website):
+    def __init__(self, web):
+        self.game_name = web.game_name
+        self.steam_link = web.steam_link
+        self.rank = web.rank
 
-    Args:
-        game_name ([string]): [Title of the game]
-        txt_file ([string]): [Path to where the file is stored]
-    """
-    with open(txt_file, "a", encoding="utf-8") as file:
-        file.write(game_name.a.text + "\n")
+    def authorize_twitter(self):
+        api_key = os.environ.get("twitter_api_key")
+        api_secret = os.environ.get("twitter_api_key_secret")
+        access_token = os.environ.get("twitter_access_token")
+        access_secret = os.environ.get("twitter_access_token_secret")
 
+        auth = tweepy.OAuthHandler(api_key, api_secret)
+        auth.set_access_token(access_token, access_secret)
 
-def ranking(link_250):
-    """[Takes in a url and splits it on the '/'. It then concatenates it
-        with another url]
+        self.api = tweepy.API(auth)
 
-    Args:
-        link_250 ([string]): [The steam 250 link of the game]
-
-    Returns:
-        [string]: [New link that points to the game in the ranking list]
-    """
-    game_num = link_250.split("/")[4].strip()
-    return f"https://steam250.com/hidden_gems#app/{game_num}"
-
-
-def authorize_twitter():
-    """[Takes in all the necessary requirements to authorize to twitter]
-
-    Returns:
-        [class]: [Returns the api needed to use twitter]
-    """
-    api_key = os.environ.get("twitter_api_key")
-    api_secret = os.environ.get("twitter_api_key_secret")
-    access_token = os.environ.get("twitter_access_token")
-    access_secret = os.environ.get("twitter_access_token_secret")
-
-    auth = tweepy.OAuthHandler(api_key, api_secret)
-    auth.set_access_token(access_token, access_secret)
-
-    return tweepy.API(auth)
-
-
-def tweet(api, game_name, steam_link, rank):
-    """[Tweet a message on twitter]
-
-    Args:
-        api ([class]): [API needed to use twitter]
-        game_name ([string]): [Title of the game]
-        steam_link ([string]): [Link to the steam page]
-        rank ([string]): [Link to the game on the ranking list]
-    """
-    message = f"💎HIDDEN GEM OF THE DAY!💎\n\n🔥{game_name.a.text}🔥\n\nFind it here: {steam_link}\nFind more hidden gems: {rank}\n\n#gaming #games #steam #indiegame #indiegames"
-    api.update_status(message)
+    def tweet(self):
+        message = f"💎HIDDEN GEM OF THE DAY!💎\n\n🔥{self.game_name.a.text}🔥\n\nFind it here: {self.steam_link}\nFind more hidden gems: {self.rank}\n\n#gaming #games #steam #indiegame #indiegames"
+        self.api.update_status(message)
 
 
 def main():
     # Initialize some variables
-    dup = True
     txt_file = "G:\\Python Projects\\Steam Hidden Gems Twitter\\GameList.txt"
     url = "https://steam250.com/hidden_gems"
 
@@ -123,24 +75,34 @@ def main():
     site = requests.get(url)
     soup = bs4.BeautifulSoup(site.text, "lxml")
 
-    # While loop to check if the game is a duplicate
-    while dup:
-        game_num = random.randint(1, 250)
-        game_block = soup.find("div", id=game_num)
+    game_num = random.randint(1, 250)
+    game_block = soup.find("div", id=game_num)
 
-        game_name = game(game_block)
-        steam_link = steam(game_block)
-        link_250 = link(game_block)
-        rank = ranking(link_250)
+    hidden_gems = Website(game_block)
+    game_file = File(game_block, txt_file)
 
-        dup = check_for_dup(game_name, txt_file)
+    while True:
+        game_file.game()
+
+        if game_file.check_for_dup():
+            game_num = random.randint(1, 250)
+            game_block = soup.find("div", id=game_num)
+        else:
+            break
+
+    hidden_gems.game()
+    hidden_gems.steam()
+    hidden_gems.link()
+    hidden_gems.ranking()
+
+    steam_gems = Tweeter(hidden_gems)
 
     # Log the name of the game in the text file
-    log_game(game_name, txt_file)
+    game_file.log_game()
 
     # Set up the link to twitter and post a tweet
-    api = authorize_twitter()
-    tweet(api, game_name, steam_link, rank)
+    steam_gems.authorize_twitter()
+    steam_gems.tweet()
 
 
 if __name__ == "__main__":
