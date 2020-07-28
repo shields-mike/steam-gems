@@ -2,3 +2,7 @@ venv
 .vscode
 Tweet.bat
 __pycache__
+Follow.bat
+follower_list.txt
+id.txt
+GameList.txt
